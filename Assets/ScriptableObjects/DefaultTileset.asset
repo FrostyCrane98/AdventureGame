@@ -15,3 +15,5 @@ MonoBehaviour:
   TilePrototypes:
   - {fileID: 11400000, guid: 727510503ceac294e82ebcc97f3c2a50, type: 2}
   - {fileID: 11400000, guid: 0f3629445ed067148b0d7ad2fea97f25, type: 2}
+  - {fileID: 11400000, guid: cfa55e6837375fd44b37b92b927b633c, type: 2}
+  - {fileID: 11400000, guid: f183fc6f6a2722841b38990a3f79f610, type: 2}

@@ -55,7 +55,7 @@ public class DungeonController : MonoBehaviour
                 }
             }
         }
-        // add door in appropriate places
+        // add doors in appropriate places
         foreach (Floor floor in currentDungeon.floors)
         {
             for (int x = 0; x< floor.Rooms.GetLength(0); x++)
@@ -85,7 +85,54 @@ public class DungeonController : MonoBehaviour
                 }
             }
         }
+
+        for (int i=0; i< currentDungeon.floors.Count; i++)
+        {
+            bool placedFloorUp = false;
+            do
+            {
+                if (TrySetRandomTile(currentDungeon.floors[i], Tile.eTileID.FloorUp, out Vector2Int tilePos, out Room room))
+                {
+                    if (i == 0)
+                    {
+                        roomPosition = room.RoomPosition;
+                    }
+                    placedFloorUp = true;
+                }
+            }
+            while (!placedFloorUp);
+
+            bool placedFloorDown = false;
+            {
+                if (TrySetRandomTile(currentDungeon.floors[i], Tile.eTileID.FloorDown, out Vector2Int tilePos, out Room room))
+                { 
+                    placedFloorDown = true;
+                }
+                while (!placedFloorDown);
+            }
+        }
     }
+
+    //Check which tiles is free
+    bool TrySetRandomTile(Floor _floor, Tile.eTileID _tileID, out Vector2Int _pos, out Room _room)
+    {
+        _pos = Vector2Int.zero;
+        _room = _floor.Rooms[Random.Range(0, _floor.Rooms.GetLength(0)), Random.Range(0, _floor.Rooms.GetLength(1))];
+        if ( _room == null )
+        {
+            return false;
+        }
+
+        _pos = new Vector2Int(Random.Range(0, _room.Size.x), Random.Range(0, _room.Size.y));
+        if (_room.Tiles[_pos.x, _pos.y].GetType() != typeof(Tile))
+        {
+            return false;
+        }
+
+        _room.Tiles[_pos.x, _pos.y].ID = _tileID;
+        return true;
+    }
+
 
     bool RoomHasNeighbour(Room _checkRoom, Vector2Int _direction)
     {
