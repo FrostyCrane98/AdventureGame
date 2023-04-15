@@ -5,6 +5,7 @@ using UnityEngine;
 public class DungeonController : MonoBehaviour
 {
     Dungeon currentDungeon;
+    public Player player;
 
     public TileSet TileSet;
 
@@ -19,6 +20,7 @@ public class DungeonController : MonoBehaviour
 
     public void CreateNewDungeon()
     {
+        // Generate empty tiles
         currentDungeon = new Dungeon();
 
         for (int i=0; i < NoOfFloors; i++)
@@ -86,6 +88,7 @@ public class DungeonController : MonoBehaviour
             }
         }
 
+        // add FloorUp and FloorDown
         for (int i=0; i< currentDungeon.floors.Count; i++)
         {
             bool placedFloorUp = false;
@@ -96,6 +99,7 @@ public class DungeonController : MonoBehaviour
                     if (i == 0)
                     {
                         roomPosition = room.RoomPosition;
+                        player.SetPosition(roomPosition);
                     }
                     placedFloorUp = true;
                 }
@@ -113,7 +117,7 @@ public class DungeonController : MonoBehaviour
         }
     }
 
-    //Check which tiles is free
+    //Check a random tile if it's empty
     bool TrySetRandomTile(Floor _floor, Tile.eTileID _tileID, out Vector2Int _pos, out Room _room)
     {
         _pos = Vector2Int.zero;
@@ -148,6 +152,11 @@ public class DungeonController : MonoBehaviour
         }
 
         return true;
+    }
+
+    public void EnterTile(Tile _tile)
+    {
+        //TO COMPLETE
     }
 
     public void MakeCurrentRoom()
