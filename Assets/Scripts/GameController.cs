@@ -25,7 +25,7 @@ public class GameController : MonoBehaviour
     {
         GameObject playerGO = Instantiate(PlayerPrefab, Vector3.zero, Quaternion.identity);
         player = playerGO.GetComponent<Player>();
-        DungeonController.player = player;
+        DungeonController.Player = player;
 
         FollowCamera.Target = playerGO.transform;
     }

@@ -1,11 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 public class DungeonController : MonoBehaviour
 {
     Dungeon currentDungeon;
-    public Player player;
+    public Player Player;
 
     public TileSet TileSet;
 
@@ -99,9 +100,10 @@ public class DungeonController : MonoBehaviour
                     if (i == 0)
                     {
                         roomPosition = room.RoomPosition;
-                        player.SetPosition(roomPosition);
+                        Player.SetPosition(roomPosition);
                     }
                     placedFloorUp = true;
+                    currentDungeon.floors[i].FloorUpTransition = new FloorTransition(room, tilePos);
                 }
             }
             while (!placedFloorUp);
@@ -113,6 +115,7 @@ public class DungeonController : MonoBehaviour
                     placedFloorDown = true;
                 }
                 while (!placedFloorDown);
+                currentDungeon.floors[i].FloorDownTransition = new FloorTransition(room, tilePos);
             }
         }
     }
@@ -156,7 +159,95 @@ public class DungeonController : MonoBehaviour
 
     public void EnterTile(Tile _tile)
     {
-        //TO COMPLETE
+        switch(_tile.ID)
+        {
+            case Tile.eTileID.DoorDown:
+                MoveRoom(Vector2Int.down);
+                break;
+
+            case Tile.eTileID.DoorUp:
+                MoveRoom(Vector2Int.up);
+                break;
+
+            case Tile.eTileID.DoorLeft:
+                MoveRoom(Vector2Int.left);
+              break;
+
+            case Tile.eTileID.DoorRight:
+                MoveRoom(Vector2Int.right);
+                break;
+            case Tile.eTileID.FloorDown:
+                MoveFloorDown();
+                break;
+
+            case Tile.eTileID.FloorUp:
+                MoveFloorUp();
+              break;
+        }
+    }
+
+    void MoveRoom(Vector2Int _direction)
+    {
+        Vector2Int targetRoomPos = CurrentRoom.RoomPosition + _direction;
+        Room targetRoom = CurrentFloor.Rooms[targetRoomPos.x, targetRoomPos.y];
+
+        ClearCurrentRoom();
+
+        roomPosition = targetRoom.RoomPosition;
+
+        if (_direction.x < 0)
+        {
+            Player.SetPosition(new Vector2Int(CurrentRoom.Size.x - 1, CurrentRoom.Size.y / 2));
+        }
+        else if (_direction.x > 0)
+        {
+            Player.SetPosition(new Vector2Int(0, CurrentRoom.Size.y / 2));
+        }
+        else if (_direction.y < 0)
+        {
+            Player.SetPosition(new Vector2Int(CurrentRoom.Size.x / 2, CurrentRoom.Size.y - 1));
+        }
+        else if (_direction.y > 0)
+        {
+            Player.SetPosition(new Vector2Int(CurrentRoom.Size.x / 2, 0));
+        }
+
+        MakeCurrentRoom();
+    }
+
+    void MoveFloorDown()
+    {
+        ClearCurrentRoom();
+        floorIndex++;
+        roomPosition = CurrentFloor.FloorUpTransition.TargetRoom.RoomPosition;
+        MakeCurrentRoom() ;
+        Player.SetPosition(CurrentFloor.FloorUpTransition.TilePosition);
+    }
+
+    void MoveFloorUp()
+    {
+        ClearCurrentRoom() ;
+        floorIndex--;
+        roomPosition = CurrentFloor.FloorDownTransition.TargetRoom.RoomPosition;
+        MakeCurrentRoom() ;
+        Player.SetPosition(CurrentFloor.FloorDownTransition.TilePosition);
+    }
+
+
+
+    void ClearCurrentRoom()
+    {
+        for(int x=0; x< CurrentRoom.Size.x; x++)
+        {
+            for(int y=0; y< CurrentRoom.Size.y; y++)
+            {
+                for(int i = CurrentRoom.Tiles[x,y].TileObjects.Count - 1; i >= 0; i--)
+                {
+                    Destroy(CurrentRoom.Tiles[x, y].TileObjects[i]);
+                }
+                CurrentRoom.Tiles[x, y].TileObjects.Clear();
+            }
+        }
     }
 
     public void MakeCurrentRoom()
@@ -166,7 +257,7 @@ public class DungeonController : MonoBehaviour
             for (int y = 0; y < CurrentRoom.Size.y; y++)
             {
                 GameObject defaultTile = GameObject.Instantiate(TileSet.GetTilePrototype(TilePrototype.eTileID.Empty).PrefabObject, new Vector3(x, 0, y), Quaternion.identity);
-
+                CurrentRoom.Tiles[x, y].TileObjects.Add(defaultTile);
                 TilePrototype.eTileID id = TilePrototype.eTileID.Empty;
                 switch (CurrentRoom.Tiles[x, y].ID)
                 {
@@ -194,6 +285,7 @@ public class DungeonController : MonoBehaviour
                     {
                         GameObject newTileObject = GameObject.Instantiate(prefabObject, new Vector3(x, 0, y), Quaternion.identity);
                         newTileObject.transform.SetParent(CurrentRoom.Tiles[x, y].transform);
+                        CurrentRoom.Tiles[x, y].TileObjects.Add(newTileObject);
                     }
                     else
                     {

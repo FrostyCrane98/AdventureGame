@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class Tile : MonoBehaviour
 {
@@ -16,4 +17,5 @@ public class Tile : MonoBehaviour
 
     public Vector2Int Position;
 
+    public List<GameObject> TileObjects = new List<GameObject>();
 }
