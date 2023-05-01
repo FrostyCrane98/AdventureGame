@@ -4,7 +4,6 @@ using UnityEngine.PlayerLoop;
 public class Player : MonoBehaviour
 {
     AdventureGame controls;
-    GameController gameController;
 
     public float MoveSpeed;
 
@@ -28,7 +27,6 @@ public class Player : MonoBehaviour
 
     private void Awake()
     {
-        gameController = FindObjectOfType<GameController>();
         controls = new AdventureGame();
         controls.Player.Move.performed += context => BeginMove(context.ReadValue<Vector2>());
     }
@@ -45,14 +43,14 @@ public class Player : MonoBehaviour
         Vector2Int position = currentPosition + direction;
 
         if (position.x < 0 || position.y < 0 
-            || position.x >= gameController.DungeonController.CurrentRoom.Size.x 
-            || position.y >= gameController.DungeonController.CurrentRoom.Size.y)
+            || position.x >= DungeonController.Instance.CurrentRoom.Size.x 
+            || position.y >= DungeonController.Instance.CurrentRoom.Size.y)
         {
             Debug.Log("Tried to move OOB");
             return;
         }
 
-        Tile tile = gameController.DungeonController.CurrentRoom.Tiles[position.x, position.y];
+        Tile tile = DungeonController.Instance.CurrentRoom.Tiles[position.x, position.y];
         if (!moving && tile != null)
         {
             moving = true;
@@ -72,9 +70,9 @@ public class Player : MonoBehaviour
             else
             {
                 currentPosition = targetPosition;
-                Tile tile = gameController.DungeonController.CurrentRoom.Tiles[currentPosition.x, currentPosition.y];
+                Tile tile = DungeonController.Instance.CurrentRoom.Tiles[currentPosition.x, currentPosition.y];
                 
-                gameController.DungeonController.EnterTile(tile);
+                // DungeonController.Instance.EnterTile(tile);
 
                 moving = false;
             }

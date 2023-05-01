@@ -1,8 +1,7 @@
 using UnityEngine;
 
-public class GameController : MonoBehaviour
+public class GameController : MonoSingleton<GameController>
 {
-    public DungeonController DungeonController;
     public FollowCamera FollowCamera;
 
     public GameObject PlayerPrefab;
@@ -17,15 +16,13 @@ public class GameController : MonoBehaviour
     void StartNewGame()
     {
         CreatePlayer();
-        DungeonController.CreateNewDungeon();
-        DungeonController.MakeCurrentRoom();
+        DungeonController.Instance.CreateNewDungeon();
     }
 
     void CreatePlayer()
     {
         GameObject playerGO = Instantiate(PlayerPrefab, Vector3.zero, Quaternion.identity);
         player = playerGO.GetComponent<Player>();
-        DungeonController.Player = player;
 
         FollowCamera.Target = playerGO.transform;
     }

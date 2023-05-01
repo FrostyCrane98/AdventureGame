@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
-public class DungeonController : MonoBehaviour
+public class DungeonController : MonoSingleton<DungeonController>
 {
     Dungeon currentDungeon;
-    public Player Player;
 
     public TileSet TileSet;
 
@@ -14,10 +13,9 @@ public class DungeonController : MonoBehaviour
     public Vector2Int RoomsPerFloor;
     public Vector2Int RoomSize;
 
-    private int floorIndex = 0;
-    public Floor CurrentFloor => currentDungeon.floors[floorIndex];
+    public Floor CurrentFloor;
     private Vector2Int roomPosition;
-    public Room CurrentRoom => currentDungeon.floors[floorIndex].Rooms[roomPosition.x, roomPosition.y];
+    public Room CurrentRoom;
 
     public void CreateNewDungeon()
     {
@@ -49,7 +47,9 @@ public class DungeonController : MonoBehaviour
                     {
                         for (int tiley = 0; tiley < RoomSize.y; tiley++)
                         {
-                            GameObject tileObj = new GameObject("Tile " + tilex + ", " + tiley);
+                            GameObject tilePrototype = TileSet.GetTilePrototype(TilePrototype.eTileID.Empty).PrefabObject;
+                            Vector3 tilePosition = new Vector3(tilex, 0 , tiley);
+                            GameObject tileObj = GameObject.Instantiate(tilePrototype, tilePosition, Quaternion.identity);
                             tileObj.transform.SetParent(roomObj.transform);
                             room.Tiles[tilex, tiley] = tileObj.AddComponent<Tile>();
                             room.Tiles[tilex, tiley].Position = new Vector2Int(tilex, tiley);
@@ -68,24 +68,69 @@ public class DungeonController : MonoBehaviour
                     Room room = floor.Rooms[x, y];
                     if (room!= null)
                     {
-                        if (RoomHasNeighbour(room, Vector2Int.up))
+                        Room neighbour = null;
+
+                        //UP TO DOWN
+                        if (room.UpDoor == null && RoomHasNeighbour(floor, room, Vector2Int.up, out neighbour))
                         {
-                            room.Tiles[room.Size.x / 2, room.Size.y - 1].ID = Tile.eTileID.DoorUp;
+                            Vector2Int tilePosition = new Vector2Int(room.Size.x / 2, room.Size.y - 1);
+                            room.UpDoor = AddDoor(floor, neighbour, tilePosition);
+                            if (room.DownDoor == null)
+                            {
+                                Vector2Int neighbourTilePosition = new Vector2Int(RoomSize.x / 2, 0);
+                                neighbour.DownDoor = AddDoor(floor, neighbour, neighbourTilePosition);
+                            }
+
+                            room.UpDoor.TargetDoor = neighbour.DownDoor;
+                            neighbour.DownDoor.TargetDoor = room.UpDoor;
                         }
-                        if (RoomHasNeighbour(room, Vector2Int.down))
+
+                        //DOWN TO UP
+                        if (room.DownDoor == null && RoomHasNeighbour(floor, room, Vector2Int.down, out neighbour))
                         {
-                            room.Tiles[room.Size.x / 2, 0].ID = Tile.eTileID.DoorDown;
+                            Vector2Int tilePosition = new Vector2Int(room.Size.x / 2, 0);
+                            room.DownDoor = AddDoor(floor, neighbour, tilePosition);
+                            if (room.UpDoor == null)
+                            {
+                                Vector2Int neighbourTilePosition = new Vector2Int(RoomSize.x / 2, room.Size.y - 1);
+                                neighbour.UpDoor = AddDoor(floor, neighbour, neighbourTilePosition);
+                            }
+
+                            room.DownDoor.TargetDoor = neighbour.UpDoor;
+                            neighbour.UpDoor.TargetDoor = room.DownDoor;
                         }
-                        if (RoomHasNeighbour(room, Vector2Int.left))
+
+                        //LEFT TO RIGHT
+                        if (room.LeftDoor == null && RoomHasNeighbour(floor, room, Vector2Int.left, out neighbour))
                         {
-                            room.Tiles[0, room.Size.y / 2].ID = Tile.eTileID.DoorLeft;
+                            Vector2Int tilePosition = new Vector2Int(0, room.Size.y / 2);
+                            room.LeftDoor = AddDoor(floor, neighbour, tilePosition);
+                            if (room.RightDoor == null)
+                            {
+                                Vector2Int neighbourTilePosition = new Vector2Int(RoomSize.x - 1, room.Size.y / 2);
+                                neighbour.RightDoor = AddDoor(floor, neighbour, neighbourTilePosition);
+                            }
+
+                            room.LeftDoor.TargetDoor = neighbour.RightDoor;
+                            neighbour.RightDoor.TargetDoor = room.LeftDoor;
                         }
-                        if (RoomHasNeighbour(room, Vector2Int.right))
+
+                        //RIGHT TO LEFT
+                        if (room.RightDoor == null && RoomHasNeighbour(floor, room, Vector2Int.right, out neighbour))
                         {
-                            room.Tiles[room.Size.x - 1, room.Size.y / 2].ID = Tile.eTileID.DoorRight;
+                            Vector2Int tilePosition = new Vector2Int(room.Size.x - 1 , room.Size.y / 2);
+                            room.RightDoor = AddDoor(floor, neighbour, tilePosition);
+                            if (room.LeftDoor == null)
+                            {
+                                Vector2Int neighbourTilePosition = new Vector2Int(0, room.Size.y / 2);
+                                neighbour.LeftDoor = AddDoor(floor, neighbour, neighbourTilePosition);
+                            }
+
+                            room.RightDoor.TargetDoor = neighbour.LeftDoor;
+                            neighbour.LeftDoor.TargetDoor = room.RightDoor;
                         }
                     }
-                }
+                } 
             }
         }
 
@@ -95,206 +140,109 @@ public class DungeonController : MonoBehaviour
             bool placedFloorUp = false;
             do
             {
-                if (TrySetRandomTile(currentDungeon.floors[i], Tile.eTileID.FloorUp, out Vector2Int tilePos, out Room room))
+                if (TryGetRandomTile(currentDungeon.floors[i], out Tile tile, out Room room))
                 {
                     if (i == 0)
                     {
                         roomPosition = room.RoomPosition;
-                        Player.SetPosition(roomPosition);
+                        GameController.Instance.Player.SetPosition(roomPosition);
+                        room.gameObject.SetActive(true);
+                        CurrentRoom = room;
+                        CurrentFloor = currentDungeon.floors[0];
+                    }
+
+                    TilePrototype doorPrototype = TileSet.GetTilePrototype(TilePrototype.eTileID.Door);
+                    GameObject doorPrefab = doorPrototype.PrefabObject;
+                    GameObject newDoorObj = GameObject.Instantiate(doorPrefab, tile.transform.position, Quaternion.identity);
+                    newDoorObj.transform.SetParent(tile.transform);
+                    Door door = newDoorObj.GetComponent<Door>();
+                    tile.MapObjects.Add(door);
+                    currentDungeon.floors[i].FloorUpDoor = door;
+
+                    if (i > 0)
+                    {
+                        door.TargetDoor = currentDungeon.floors[i - 1].FloorDownDoor;
                     }
                     placedFloorUp = true;
-                    currentDungeon.floors[i].FloorUpTransition = new FloorTransition(room, tilePos);
                 }
             }
             while (!placedFloorUp);
 
             bool placedFloorDown = false;
+            do
             {
-                if (TrySetRandomTile(currentDungeon.floors[i], Tile.eTileID.FloorDown, out Vector2Int tilePos, out Room room))
-                { 
+                if (TryGetRandomTile(currentDungeon.floors[i], out Tile tile, out Room room))
+                {
                     placedFloorDown = true;
+                    TilePrototype doorPrototype = TileSet.GetTilePrototype(TilePrototype.eTileID.Door);
+                    GameObject doorPrefab = doorPrototype.PrefabObject;
+                    GameObject newDoorObj = GameObject.Instantiate(doorPrefab, tile.transform.position, Quaternion.identity);
+                    newDoorObj.transform.SetParent(tile.transform);
+                    Door door = newDoorObj.GetComponent<Door>();
+                    tile.MapObjects.Add(door);
+                    currentDungeon.floors[i].FloorDownDoor = door;
+                    door.TargetDoor = currentDungeon.floors[i + 1].FloorUpDoor;
                 }
-                while (!placedFloorDown);
-                currentDungeon.floors[i].FloorDownTransition = new FloorTransition(room, tilePos);
             }
+                while (!placedFloorDown);
         }
     }
 
     //Check a random tile if it's empty
-    bool TrySetRandomTile(Floor _floor, Tile.eTileID _tileID, out Vector2Int _pos, out Room _room)
+    bool TryGetRandomTile(Floor _floor, out Tile _tile, out Room _room)
     {
-        _pos = Vector2Int.zero;
+        Vector2Int pos = Vector2Int.zero;
+        _tile = null;
+
         _room = _floor.Rooms[Random.Range(0, _floor.Rooms.GetLength(0)), Random.Range(0, _floor.Rooms.GetLength(1))];
         if ( _room == null )
         {
             return false;
         }
 
-        _pos = new Vector2Int(Random.Range(0, _room.Size.x), Random.Range(0, _room.Size.y));
-        if (_room.Tiles[_pos.x, _pos.y].GetType() != typeof(Tile))
+        pos = new Vector2Int(Random.Range(0, _room.Size.x), Random.Range(0, _room.Size.y));
+        _tile = _room.Tiles[pos.x, pos.y];
+        if (!_tile.IsPassable())
         {
             return false;
         }
 
-        _room.Tiles[_pos.x, _pos.y].ID = _tileID;
         return true;
     }
 
 
-    bool RoomHasNeighbour(Room _checkRoom, Vector2Int _direction)
+    bool RoomHasNeighbour(Floor _floor, Room _checkRoom, Vector2Int _direction, out Room _neighbour)
     {
         Vector2Int testPos = _checkRoom.RoomPosition + _direction;
+        _neighbour = null;
 
-        if (testPos.x < 0 || testPos.y<0 || testPos.x >= CurrentFloor.Rooms.GetLength(0) || testPos.y >= CurrentFloor.Rooms.GetLength(1))
+        if (testPos.x < 0 || testPos.y<0 || testPos.x >= RoomsPerFloor.x || testPos.y >= RoomsPerFloor.y)
         {
             return false;
         }
-        if (CurrentFloor.Rooms[testPos.x, testPos.y] == null)
+        if (_floor.Rooms[testPos.x, testPos.y] == null)
         {
             return false;
         }
+
+        _neighbour = _floor.Rooms[testPos.x, testPos.y];
 
         return true;
     }
 
-    public void EnterTile(Tile _tile)
+    Door AddDoor(Floor _floor, Room _room, Vector2Int _tilePosition)
     {
-        switch(_tile.ID)
-        {
-            case Tile.eTileID.DoorDown:
-                MoveRoom(Vector2Int.down);
-                break;
-
-            case Tile.eTileID.DoorUp:
-                MoveRoom(Vector2Int.up);
-                break;
-
-            case Tile.eTileID.DoorLeft:
-                MoveRoom(Vector2Int.left);
-              break;
-
-            case Tile.eTileID.DoorRight:
-                MoveRoom(Vector2Int.right);
-                break;
-            case Tile.eTileID.FloorDown:
-                MoveFloorDown();
-                break;
-
-            case Tile.eTileID.FloorUp:
-                MoveFloorUp();
-              break;
-        }
-    }
-
-    void MoveRoom(Vector2Int _direction)
-    {
-        Vector2Int targetRoomPos = CurrentRoom.RoomPosition + _direction;
-        Room targetRoom = CurrentFloor.Rooms[targetRoomPos.x, targetRoomPos.y];
-
-        ClearCurrentRoom();
-
-        roomPosition = targetRoom.RoomPosition;
-
-        if (_direction.x < 0)
-        {
-            Player.SetPosition(new Vector2Int(CurrentRoom.Size.x - 1, CurrentRoom.Size.y / 2));
-        }
-        else if (_direction.x > 0)
-        {
-            Player.SetPosition(new Vector2Int(0, CurrentRoom.Size.y / 2));
-        }
-        else if (_direction.y < 0)
-        {
-            Player.SetPosition(new Vector2Int(CurrentRoom.Size.x / 2, CurrentRoom.Size.y - 1));
-        }
-        else if (_direction.y > 0)
-        {
-            Player.SetPosition(new Vector2Int(CurrentRoom.Size.x / 2, 0));
-        }
-
-        MakeCurrentRoom();
-    }
-
-    void MoveFloorDown()
-    {
-        ClearCurrentRoom();
-        floorIndex++;
-        roomPosition = CurrentFloor.FloorUpTransition.TargetRoom.RoomPosition;
-        MakeCurrentRoom() ;
-        Player.SetPosition(CurrentFloor.FloorUpTransition.TilePosition);
-    }
-
-    void MoveFloorUp()
-    {
-        ClearCurrentRoom() ;
-        floorIndex--;
-        roomPosition = CurrentFloor.FloorDownTransition.TargetRoom.RoomPosition;
-        MakeCurrentRoom() ;
-        Player.SetPosition(CurrentFloor.FloorDownTransition.TilePosition);
-    }
-
-
-
-    void ClearCurrentRoom()
-    {
-        for(int x=0; x< CurrentRoom.Size.x; x++)
-        {
-            for(int y=0; y< CurrentRoom.Size.y; y++)
-            {
-                for(int i = CurrentRoom.Tiles[x,y].TileObjects.Count - 1; i >= 0; i--)
-                {
-                    Destroy(CurrentRoom.Tiles[x, y].TileObjects[i]);
-                }
-                CurrentRoom.Tiles[x, y].TileObjects.Clear();
-            }
-        }
-    }
-
-    public void MakeCurrentRoom()
-    {
-        for (int x=0; x < CurrentRoom.Size.x; x++)
-        {
-            for (int y = 0; y < CurrentRoom.Size.y; y++)
-            {
-                GameObject defaultTile = GameObject.Instantiate(TileSet.GetTilePrototype(TilePrototype.eTileID.Empty).PrefabObject, new Vector3(x, 0, y), Quaternion.identity);
-                CurrentRoom.Tiles[x, y].TileObjects.Add(defaultTile);
-                TilePrototype.eTileID id = TilePrototype.eTileID.Empty;
-                switch (CurrentRoom.Tiles[x, y].ID)
-                {
-                    case Tile.eTileID.DoorUp:
-                    case Tile.eTileID.DoorDown:
-                    case Tile.eTileID.DoorLeft:
-                    case Tile.eTileID.DoorRight:
-                        id = TilePrototype.eTileID.Door;
-                        break;
-
-                    case Tile.eTileID.FloorDown:
-                        id = TilePrototype.eTileID.FloorDown;
-                        break;
-                    
-                    case Tile.eTileID.FloorUp:
-                        id = TilePrototype.eTileID.FloorUp;
-                        break;
-                                
-                }
-
-                if (id != TilePrototype.eTileID.Empty)
-                {
-                    GameObject prefabObject = TileSet.GetTilePrototype(id).PrefabObject;
-                    if (prefabObject != null)
-                    {
-                        GameObject newTileObject = GameObject.Instantiate(prefabObject, new Vector3(x, 0, y), Quaternion.identity);
-                        newTileObject.transform.SetParent(CurrentRoom.Tiles[x, y].transform);
-                        CurrentRoom.Tiles[x, y].TileObjects.Add(newTileObject);
-                    }
-                    else
-                    {
-                        Debug.LogError("Missing GameObject For : " + id);
-                    }
-
-
-                }
-            }
-        }
+        TilePrototype doorPrototype = TileSet.GetTilePrototype(TilePrototype.eTileID.Door);
+        GameObject doorPrefab = doorPrototype.PrefabObject;
+        Tile tile = _room.Tiles[_tilePosition.x, _tilePosition.y];
+        GameObject newDoorObj = GameObject.Instantiate(doorPrefab, tile.transform.position, Quaternion.identity);
+        Door door = newDoorObj.GetComponent<Door>();
+        door.Floor = _floor;
+        door.Room = _room;
+        tile.MapObjects.Add(door);
+        door.TilePosition = _tilePosition;
+        newDoorObj.transform.SetParent(tile.gameObject.transform);
+        door.Passable = true;
+        return door;
     }
 }
