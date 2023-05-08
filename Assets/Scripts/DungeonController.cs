@@ -17,6 +17,11 @@ public class DungeonController : MonoSingleton<DungeonController>
     private Vector2Int roomPosition;
     public Room CurrentRoom;
 
+    public Tile GetTile(Vector2Int _position)
+    {
+        return CurrentRoom.Tiles[_position.x, _position.y];
+    }
+
     public void CreateNewDungeon()
     {
         // Generate empty tiles

@@ -1,14 +1,10 @@
 using UnityEngine;
 using UnityEngine.PlayerLoop;
 
-public class Player : MonoBehaviour
+public class Player : Actor
 {
     AdventureGame controls;
 
-    public float MoveSpeed;
-
-    private int maxHealth;
-    private int currentHealth;
     private int experience;
     private Quest[] quests;
     private Weapon heldWeapon;
@@ -16,9 +12,6 @@ public class Player : MonoBehaviour
     private Item[] consumables;
     private float potionCooldown;
 
-    private bool moving;
-    private Vector2Int currentPosition;
-    private Vector2Int targetPosition;
 
     private void OnEnable()
     {
@@ -31,56 +24,48 @@ public class Player : MonoBehaviour
         controls.Player.Move.performed += context => BeginMove(context.ReadValue<Vector2>());
     }
 
-    public void SetPosition(Vector2Int _position)
+    public override void BeginMove(Vector2 _direction)
     {
-        currentPosition = _position;
-        transform.position = new Vector3(currentPosition.x, 0, currentPosition.y);
-    }
-
-    private void BeginMove(Vector2 _direction)
-    {
-        Vector2Int direction = new Vector2Int((int)_direction.x, (int)_direction.y);
-        Vector2Int position = currentPosition + direction;
-
-        if (position.x < 0 || position.y < 0 
-            || position.x >= DungeonController.Instance.CurrentRoom.Size.x 
-            || position.y >= DungeonController.Instance.CurrentRoom.Size.y)
+        if (GameController.Instance.GameState == GameController.eGameState.PlayerTurn)
         {
-            Debug.Log("Tried to move OOB");
-            return;
+            base.BeginMove(_direction);
         }
-
-        Tile tile = DungeonController.Instance.CurrentRoom.Tiles[position.x, position.y];
-        if (!moving && tile != null)
-        {
-            moving = true;
-            targetPosition = position;
-        }            
     }
 
-    private void Update()
+    protected override void EndTurn()
     {
-        if (moving)
-        {
-            Vector3 targetPos = new Vector3(targetPosition.x, 0, targetPosition.y);
-            if(Vector3.Distance(transform.position, targetPos) > float.Epsilon)
-            {
-                transform.position = Vector3.MoveTowards(transform.position, targetPos, Time.deltaTime * MoveSpeed);
-            }
-            else
-            {
-                currentPosition = targetPosition;
-                Tile tile = DungeonController.Instance.CurrentRoom.Tiles[currentPosition.x, currentPosition.y];
-                
-                // DungeonController.Instance.EnterTile(tile);
+        ActorState = eActorState.Idle;
+        GameController.Instance.GoToState(GameController.eGameState.MonsterTurn);
+    }
 
-                moving = false;
+    public override void EnterTile(Vector2Int _tilePosition)
+    {
+        DungeonController.Instance.GetTile(TilePosition).MapObjects.Remove(this);
+
+        TilePosition = targetPosition;
+        Tile tile = DungeonController.Instance.GetTile(TilePosition);
+        tile.MapObjects.Add(this);
+
+        for (int i = 0; i < tile.MapObjects.Count; i++)
+        {
+            if (tile.MapObjects[i].GetType() == typeof(Door))
+            {
+                EnterDoor(tile.MapObjects[i] as Door);
             }
         }
     }
-    void OnKill()
-    {
 
+    void EnterDoor(Door _door)
+    {
+        DungeonController.Instance.CurrentFloor.gameObject.SetActive(false);
+        DungeonController.Instance.CurrentFloor = _door.TargetDoor.Floor;
+        DungeonController.Instance.CurrentFloor.gameObject.SetActive(true);
+
+        DungeonController.Instance.CurrentRoom.gameObject.SetActive(false);
+        DungeonController.Instance.CurrentRoom = _door.TargetDoor.Room;
+        DungeonController.Instance.CurrentRoom.gameObject.SetActive(true);
+
+        SetPosition(_door.TargetDoor.TilePosition);
     }
 
     void OnLevelUp()

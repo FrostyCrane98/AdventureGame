@@ -8,6 +8,15 @@ public class GameController : MonoSingleton<GameController>
     private Player player;
     public Player Player => player;
 
+    // Verificare se valido in quanto non viene scritto durante il video
+    public enum eGameState
+    {
+        PlayerTurn,
+        MonsterTurn
+    }
+
+    public eGameState GameState;
+
     private void Start()
     {
         StartNewGame();
@@ -17,6 +26,12 @@ public class GameController : MonoSingleton<GameController>
     {
         CreatePlayer();
         DungeonController.Instance.CreateNewDungeon();
+    }
+
+    // Verificare se valido in quanto non viene scritto durante il video
+    public void GoToState(eGameState state)
+    {
+        GameState = state;
     }
 
     void CreatePlayer()
