@@ -6,7 +6,7 @@ using UnityEngine;
 public class DungeonController : MonoSingleton<DungeonController>
 {
     Dungeon currentDungeon;
-
+    public Dungeon CurrentDungeon { get { return currentDungeon; } }
     public TileSet TileSet;
 
     public int NoOfFloors;
@@ -150,7 +150,7 @@ public class DungeonController : MonoSingleton<DungeonController>
                     if (i == 0)
                     {
                         roomPosition = room.RoomPosition;
-                        GameController.Instance.Player.SetPosition(roomPosition);
+                        GameController.Instance.Player.SetPosition(tile.Position);
                         room.gameObject.SetActive(true);
                         CurrentRoom = room;
                         CurrentFloor = currentDungeon.floors[0];
@@ -161,12 +161,17 @@ public class DungeonController : MonoSingleton<DungeonController>
                     GameObject newDoorObj = GameObject.Instantiate(doorPrefab, tile.transform.position, Quaternion.identity);
                     newDoorObj.transform.SetParent(tile.transform);
                     Door door = newDoorObj.GetComponent<Door>();
+                    door.Passable = true;
                     tile.MapObjects.Add(door);
                     currentDungeon.floors[i].FloorUpDoor = door;
 
                     if (i > 0)
                     {
                         door.TargetDoor = currentDungeon.floors[i - 1].FloorDownDoor;
+                    }
+                    else
+                    {
+                        currentDungeon.DungeonExitDoor = door;
                     }
                     placedFloorUp = true;
                 }
@@ -184,6 +189,7 @@ public class DungeonController : MonoSingleton<DungeonController>
                     GameObject newDoorObj = GameObject.Instantiate(doorPrefab, tile.transform.position, Quaternion.identity);
                     newDoorObj.transform.SetParent(tile.transform);
                     Door door = newDoorObj.GetComponent<Door>();
+                    door.Passable = true;
                     tile.MapObjects.Add(door);
                     currentDungeon.floors[i].FloorDownDoor = door;
                     door.TargetDoor = currentDungeon.floors[i + 1].FloorUpDoor;
@@ -231,7 +237,6 @@ public class DungeonController : MonoSingleton<DungeonController>
         }
 
         _neighbour = _floor.Rooms[testPos.x, testPos.y];
-
         return true;
     }
 
@@ -249,5 +254,15 @@ public class DungeonController : MonoSingleton<DungeonController>
         newDoorObj.transform.SetParent(tile.gameObject.transform);
         door.Passable = true;
         return door;
+    }
+
+    public void ExitDungeon()
+    {
+        CurrentRoom.gameObject.SetActive(false);
+    }
+
+    public void EnterDungeon()
+    {
+        CurrentRoom.gameObject.SetActive(true);
     }
 }

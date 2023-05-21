@@ -7,7 +7,9 @@ public class Actor : MapObject
     protected Vector2Int targetPosition;
 
     protected int maxHealth;
+    public int MaxHealth { get { return maxHealth; } }
     protected int currentHealth;
+    public int CurrentHealth { get { return currentHealth; } }
 
     public float MoveSpeed = 5.0f;
     public int InitialHealth;
@@ -34,7 +36,7 @@ public class Actor : MapObject
 
     public virtual bool CanMoveToTile(Vector2Int _position)
     {
-        if (ActorState != eActorState.Idle || _position.x < 0 || _position.y <0 ||
+        if (ActorState != eActorState.Idle || _position.x < 0 || _position.y < 0 ||
             _position.x >= DungeonController.Instance.CurrentRoom.Size.x ||
             _position.y >= DungeonController.Instance.CurrentRoom.Size.y) 
         { 
@@ -73,6 +75,19 @@ public class Actor : MapObject
                     targetPosition = position;
                 }
             }
+            else
+            {
+                for (int i = 0; i < tile.MapObjects.Count; i++) 
+                {
+                    if (tile.MapObjects[i].GetType() == typeof(Monster))
+                    {
+                        attackStartTime = Time.time;
+                        ActorState = eActorState.Attacking;
+                        attackTarget = tile.MapObjects[i] as Monster;
+                    }
+                }
+            }
+
         }
     }
 
@@ -144,12 +159,12 @@ public class Actor : MapObject
         ActorState = eActorState.Idle;
     }
 
-    public int GetAttackDamage()
+    public virtual int GetAttackDamage()
     {
         return 5;
     }
 
-    public void TakeDamage(int _amount)
+    public virtual void TakeDamage(int _amount)
     {
         int totalDamage = _amount;
 
@@ -159,6 +174,8 @@ public class Actor : MapObject
         }
 
         currentHealth -= totalDamage;
+
+        UIController.Instance.ShowDamageTag(transform.position, totalDamage.ToString());
 
         if (currentHealth <= 0)
         {

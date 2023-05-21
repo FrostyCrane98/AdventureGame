@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: FloorUp
   m_EditorClassIdentifier: 
   TileType: 2
-  PrefabObject: {fileID: 3402236106581253520, guid: dbb31442e9c24fe45815a8f97fb2f8f1, type: 3}
+  PrefabObject: {fileID: 3402236106581253520, guid: a5ff5b5a810cf9b488a05d11180ab464, type: 3}

@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: Door
   m_EditorClassIdentifier: 
   TileType: 1
-  PrefabObject: {fileID: 3402236106581253520, guid: 6e65cf01452788a43b6477d8fa7aaaf8, type: 3}
+  PrefabObject: {fileID: 3402236106581253520, guid: c5eb4d1420a5fea41ad2bc1e8c916888, type: 3}

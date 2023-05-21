@@ -8,14 +8,30 @@ public class GameController : MonoSingleton<GameController>
     private Player player;
     public Player Player => player;
 
-    // Verificare se valido in quanto non viene scritto durante il video
     public enum eGameState
     {
+        InTown,
         PlayerTurn,
         MonsterTurn
     }
 
-    public eGameState GameState;
+    public eGameState GameState = eGameState.PlayerTurn;
+
+    public void GoToState(eGameState _state)
+    {
+        GameState = _state;
+        switch (GameState)
+        {
+            case eGameState.InTown:
+                UIController.Instance.EnterTown();
+                DungeonController.Instance.ExitDungeon();
+                break;
+
+            case eGameState.MonsterTurn:
+                MonsterController.Instance.MoveMonsters();
+                break;
+        }
+    }
 
     private void Start()
     {
@@ -26,19 +42,20 @@ public class GameController : MonoSingleton<GameController>
     {
         CreatePlayer();
         DungeonController.Instance.CreateNewDungeon();
+        GoToState(eGameState.PlayerTurn);
     }
 
-    // Verificare se valido in quanto non viene scritto durante il video
-    public void GoToState(eGameState state)
-    {
-        GameState = state;
-    }
 
     void CreatePlayer()
     {
         GameObject playerGO = Instantiate(PlayerPrefab, Vector3.zero, Quaternion.identity);
         player = playerGO.GetComponent<Player>();
-
+        player.Reset();
         FollowCamera.Target = playerGO.transform;
+    }
+
+    public void ExitDungeon()
+    {
+        GoToState(eGameState.InTown);
     }
 }
